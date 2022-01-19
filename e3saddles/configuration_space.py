@@ -1,5 +1,6 @@
 import jax
 import jax.numpy as jnp
+import numpy as np
 from functools import partial
 
 
@@ -19,7 +20,6 @@ def angle(tup, point):
     displacement_1 = point[i] - point[base]
     displacement_2 = point[j] - point[base]
     return displacement_1.dot(displacement_2)
-
 
 
 @partial(jax.jit, static_argnums=[0])
@@ -120,9 +120,12 @@ class ConfigurationSpace:
         generate a random point in the configuration space
         """
 
-        return jax.random.normal(
+        return jax.random.uniform(
             jax.random.PRNGKey(seed),
-            shape=(self.number_of_points,3))
+            shape=(self.number_of_points,3),
+            minval=-1.0,
+            maxval=1.0
+        )
 
 
     def random_surface(self, seed, number_of_factors):
@@ -134,9 +137,12 @@ class ConfigurationSpace:
         infinity.
         """
         invariant_functions = self.distance_functions + self.angle_functions
-        coefficients = jax.random.normal(
+        coefficients = jax.random.uniform(
             jax.random.PRNGKey(seed),
-            shape=(number_of_factors,len(invariant_functions)))
+            shape=(number_of_factors,len(invariant_functions)),
+            minval=-0.1,
+            maxval=0.1
+        )
 
         def surface(point):
             result = 1
@@ -152,3 +158,22 @@ class ConfigurationSpace:
         return jax.jit(surface)
 
 
+
+
+@partial(jax.jit, static_argnums=[0])
+def update_minima(function, point, factor):
+    return point - factor * jax.grad(function)(point)
+
+def find_minima(function, initial_point, num_steps, factor=0.001, log_frequency=1000):
+    point = initial_point
+    function_vals = np.zeros(num_steps)
+
+    for step in range(num_steps):
+        point = update_minima(function, point, factor)
+        val = function(point)
+        function_vals[step] = val
+        if step % log_frequency == 0:
+            print("step:      ", step)
+            print("function:  ", val)
+
+    return point, function_vals
