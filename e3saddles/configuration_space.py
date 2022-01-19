@@ -21,6 +21,46 @@ def angle(tup, point):
     return displacement_1.dot(displacement_2)
 
 
+
+@partial(jax.jit, static_argnums=[0])
+def moving_frame(tup, point):
+
+    base, i, j = tup
+    base_vector = point[base]
+    displacement_1_unnormalized = point[i] - point[base]
+    displacement_2_unnormalized = point[j] - point[base]
+
+
+    displacement_1 = (
+        displacement_1_unnormalized /
+        jnp.sqrt(displacement_1_unnormalized.dot(displacement_1_unnormalized)))
+    displacement_2 = (
+        displacement_2_unnormalized /
+        jnp.sqrt(displacement_2_unnormalized.dot(displacement_2_unnormalized)))
+
+
+    column_0 = displacement_1
+    column_1_unnormalized = jnp.cross(displacement_1, displacement_2)
+    column_1 = ( column_1_unnormalized /
+                 jnp.sqrt(column_1_unnormalized.dot(column_1_unnormalized)))
+    column_2 = jnp.cross(column_0, column_1)
+    return jnp.vstack((
+        jnp.column_stack((column_0, column_1, column_2, base_vector)),
+        jnp.array([0,0,0,1])))
+
+
+@jax.jit
+def e3_inverse(mat):
+    rotation_part = mat[0:3, 0:3]
+    translation_part = mat[0:3, 3]
+    transpose = jnp.transpose(rotation_part)
+    return jnp.vstack(
+        (jnp.concatenate(
+            (transpose, - transpose.dot(translation_part.reshape((3,1)))),
+            axis=1),
+         jnp.array([0,0,0,1]))
+    )
+
 class ConfigurationSpace:
     """
     class to represent the configuration space of points in R3 we
@@ -31,7 +71,7 @@ class ConfigurationSpace:
     functions under the E3 action.
     """
 
-    def __init__(self, number_of_points, seed=42):
+    def __init__(self, number_of_points):
         self.number_of_points = number_of_points
 
 
@@ -88,6 +128,10 @@ class ConfigurationSpace:
     def random_surface(self, seed, number_of_factors):
         """
         return a randomly generated surface over the configuration space
+        take number_of_factors random linear combinations of E3 invariant
+        functions, stick them into sin, and then multiply the results. This
+        gives a super lumpy surface that doesn't blow up as you approach
+        infinity.
         """
         invariant_functions = self.distance_functions + self.angle_functions
         coefficients = jax.random.normal(
@@ -106,3 +150,5 @@ class ConfigurationSpace:
             return result
 
         return jax.jit(surface)
+
+
