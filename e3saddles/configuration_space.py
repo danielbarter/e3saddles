@@ -23,32 +23,43 @@ def angle(tup, point):
 
 class ConfigurationSpace:
     """
-    class to represent the configuration space of points in R3
-    we represent a point in the configuration space as a
-    number_of_points x 3 dimensional tensor.
+    class to represent the configuration space of points in R3 we
+    represent a point in the configuration space as a number_of_points
+    x 3 dimensional tensor. We are particularly interested in the
+    componentwise action of E3 on the configuration space. Distances
+    between points and angles between segments are primitive invariant
+    functions under the E3 action.
     """
 
     def __init__(self, number_of_points, seed=42):
         self.number_of_points = number_of_points
-        self.dimension = number_of_points * 3
-        self.random_key = jax.random.PRNGKey(seed)
+
+
 
 
         # we specify a distance invariant function as a
-        # tuple (i,j) where i < j < number_of_points
-        self.distance_functions = {}
+        # tuple (i,j) where i < j < number_of_points. The
+        # attribute distance_functions maps tuples to GPU
+        # compiled functions implementing the distance function
+        self.distance_functions_dict = {}
+        self.distance_functions = []
 
         for i in range(number_of_points):
             for j in range(number_of_points):
                 if i < j:
                     tup = (i,j)
-                    self.distance_functions[tup] = partial(distance, tup)
+                    func = partial(distance, tup)
+                    self.distance_functions_dict[tup] = func
+                    self.distance_functions.append(func)
 
 
         # we specify an angle invariant function as a
         # tuple (base,i,j) with no repeats where i < j,
-        # base < number_of_points and j < number_of_points
-        self.angle_functions = {}
+        # base < number_of_points and j < number_of_points.
+        # The attribute angle_functions maps tuples to GPU
+        # compiled functions implementing the angle function
+        self.angle_functions_dict = {}
+        self.angle_functions = []
 
         for base in range(number_of_points):
             for i in range(number_of_points):
@@ -58,18 +69,40 @@ class ConfigurationSpace:
                          i < j ):
 
                         tup = (base,i,j)
-                        self.angle_functions[tup] = partial(angle, tup)
+                        func = partial(angle, tup)
+                        self.angle_functions_dict[tup] = func
+                        self.angle_functions.append(func)
 
 
 
-    def random_point(self):
+    def random_point(self, seed):
         """
         generate a random point in the configuration space
         """
 
-        result = jax.random.normal(
-            self.random_key,
+        return jax.random.normal(
+            jax.random.PRNGKey(seed),
             shape=(self.number_of_points,3))
-        self.random_key = jax.random.split(self.random_key)[1]
-        return result
 
+
+    def random_surface(self, seed, number_of_factors):
+        """
+        return a randomly generated surface over the configuration space
+        """
+        invariant_functions = self.distance_functions + self.angle_functions
+        coefficients = jax.random.normal(
+            jax.random.PRNGKey(seed),
+            shape=(number_of_factors,len(invariant_functions)))
+
+        def surface(point):
+            result = 1
+            for i in range(number_of_factors):
+                accumulator = 0
+                for j in range(len(invariant_functions)):
+                    accumulator += coefficients[i,j] * invariant_functions[j](point)
+
+                result *= jnp.sin(accumulator)
+
+            return result
+
+        return jax.jit(surface)
