@@ -120,8 +120,10 @@ class ConfigurationSpace:
         generate a random point in the configuration space
         """
 
+        key = jax.random.PRNGKey(seed)
+
         return jax.random.uniform(
-            jax.random.PRNGKey(seed),
+            key,
             shape=(self.number_of_points,3),
             minval=-1.0,
             maxval=1.0)
@@ -135,18 +137,30 @@ class ConfigurationSpace:
 
         invariant_functions = self.distance_functions + self.angle_functions
 
+        key_0 = jax.random.PRNGKey(seed)
+        key_1 = jax.random.split(key_0)[1]
+        key_2 = jax.random.split(key_1)[1]
+
         coefficients = [
             jax.random.uniform(
-                jax.random.PRNGKey(seed),
+                key_0,
                 shape=(layer_1_count,len(invariant_functions)),
                 minval=-1.0,
                 maxval=1.0),
 
             jax.random.uniform(
-                jax.random.PRNGKey(seed),
+                key_1,
                 shape=(layer_2_count,layer_1_count),
                 minval=-1.0,
+                maxval=1.0),
+
+            jax.random.uniform(
+                key_2,
+                shape=(layer_2_count,),
+                minval=-1.0,
                 maxval=1.0)
+
+
         ]
 
 
@@ -154,13 +168,13 @@ class ConfigurationSpace:
             inputs = jnp.array([f(point) for f in invariant_functions])
             layer_1 = jax.nn.sigmoid(coefficients[0].dot(inputs))
             layer_2 = jax.nn.sigmoid(coefficients[1].dot(layer_1))
-            return layer_2.sum()
+            return coefficients[2].dot(layer_2)
 
 
         return jax.jit(surface)
 
 
-
+### finding minima ###
 
 @partial(jax.jit, static_argnums=[0])
 def update_minima(function, point, factor):
@@ -171,8 +185,7 @@ def update_minima(function, point, factor):
 
     val = function(point)
     grad = jax.grad(function)(point)
-    grad_flattened = grad.flatten()
-    grad_norm = jax.numpy.sqrt(grad_flattened.dot(grad_flattened))
+    grad_norm = jax.numpy.sqrt((grad * grad).sum())
 
     new_point = point - factor * grad
 
@@ -184,7 +197,7 @@ def find_minima(
         function,
         initial_point,
         num_steps,
-        factor=0.01,
+        factor,
         log_frequency=1000,
         minimization_report_file="/tmp/minimzation_report.pdf"
 ):
@@ -214,3 +227,74 @@ def find_minima(
     fig.savefig(minimization_report_file)
 
     return point
+
+
+### finding geodesics ###
+
+@partial(jax.jit, static_argnums=[0])
+def action(function, left_point, right_point):
+
+    displacement = right_point - left_point
+    squares = displacement * displacement
+    graph_component = (function(right_point) - function(left_point)) ** 2
+    return squares.sum() + graph_component
+
+
+@partial(jax.jit, static_argnums=[0])
+def lagrangian(
+        function,      # function defining graph
+        points,        # n points
+        start,         # start point. fixed
+        end            # end point. fixed
+):
+
+    accumulator = action(function, start, points[0])
+
+    for i in range(0, points.shape[0] - 1):
+        accumulator += action(function, points[i], points[i+1])
+
+    accumulator += action(function, points[-1], end)
+
+    return accumulator
+
+
+@partial(jax.jit, static_argnums=[0])
+def update_geodesic(function, points, start, end, factor):
+    val = lagrangian(function, points, start, end)
+    new_points = points -  factor * jax.grad(lagrangian, argnums=1)(function, points, start, end)
+    return new_points, val
+
+
+def compute_initial_points(start, end, number_of_points):
+    ts = np.linspace(0.0, 1.0, number_of_points+1)[1:]
+    points = [ start * ( 1 - t ) + end * t for t in ts ]
+    return jnp.stack(points)
+
+def find_geodesic(
+        function,
+        initial_points,
+        start,
+        end,
+        num_steps,
+        factor,
+        log_frequency=1000,
+        geodesic_report_file="/tmp/geodesic_report.pdf"
+):
+    points = initial_points
+    lagrangian_vals = np.zeros(num_steps)
+
+    for step in range(num_steps):
+        points, val = update_geodesic(function, points, start, end, factor)
+        lagrangian_vals[step] = val
+        if step % 1000 == 0:
+            print("step:      ", step)
+            print("lagrangian:", val)
+
+    fig, axs = plt.subplots(2, 1, figsize=(5,10), gridspec_kw={"height_ratios":[1,1]})
+    axs[0].plot(lagrangian_vals)
+    axs[0].set_title("lagrangian vals")
+    fig.savefig(minimization_report_file)
+
+    return points
+
+
