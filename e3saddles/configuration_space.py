@@ -124,8 +124,7 @@ class ConfigurationSpace:
             jax.random.PRNGKey(seed),
             shape=(self.number_of_points,3),
             minval=-1.0,
-            maxval=1.0
-        )
+            maxval=1.0)
 
 
     def random_surface(self, seed, layer_1_count, layer_2_count):
@@ -140,14 +139,15 @@ class ConfigurationSpace:
             jax.random.uniform(
                 jax.random.PRNGKey(seed),
                 shape=(layer_1_count,len(invariant_functions)),
-                minval=-0.5,
-                maxval=0.5),
+                minval=-1.0,
+                maxval=1.0),
 
             jax.random.uniform(
                 jax.random.PRNGKey(seed),
                 shape=(layer_2_count,layer_1_count),
-                minval=-0.5,
-                maxval=0.5)]
+                minval=-1.0,
+                maxval=1.0)
+        ]
 
 
         def surface(point):
@@ -178,7 +178,6 @@ def update_minima(function, point, factor):
 
 
     return new_point, val, grad_norm
-
 
 
 def find_minima(
