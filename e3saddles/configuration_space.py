@@ -129,6 +129,9 @@ class ConfigurationSpace:
 
 
     def random_surface(self, seed, layer_1_count, layer_2_count):
+        """
+        2 layer NN with random coefficients for the test surface.
+        """
 
 
         invariant_functions = self.distance_functions + self.angle_functions
