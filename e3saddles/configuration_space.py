@@ -165,7 +165,7 @@ class ConfigurationSpace:
 @partial(jax.jit, static_argnums=[0])
 def update_minima(function, point, factor):
     """
-    returns the new point, and the val / grad norm at the passed in point.
+    returns the new point, and the val / grad norm at the old point.
     """
 
 
@@ -188,6 +188,9 @@ def find_minima(
         log_frequency=1000,
         minimization_report_file="/tmp/minimzation_report.pdf"
 ):
+    """
+    loop for finding minima
+    """
 
     point = initial_point
     function_vals = np.zeros(num_steps)
@@ -203,7 +206,7 @@ def find_minima(
             print("function:  ", val)
             print("grad norm: ", grad_norm)
 
-    fig, axs = plt.subplots(2, 1, figsize=(5,10), gridspec_kw={'height_ratios':[1,1]})
+    fig, axs = plt.subplots(2, 1, figsize=(5,10), gridspec_kw={"height_ratios":[1,1]})
     axs[0].plot(function_vals)
     axs[0].set_title("function vals")
     axs[1].plot(grad_norms)
