@@ -1,6 +1,7 @@
 import jax
 import jax.numpy as jnp
 import numpy as np
+import matplotlib.pyplot as plt
 from functools import partial
 
 
@@ -10,7 +11,6 @@ def distance(tup, point):
     i, j = tup
     displacement = point[j] - point[i]
     return displacement.dot(displacement)
-
 
 
 @partial(jax.jit, static_argnums=[0])
@@ -130,7 +130,7 @@ class ConfigurationSpace:
 
     def random_surface(self, seed, layer_1_count, layer_2_count):
         """
-        2 layer NN with random coefficients for the test surface.
+        E3 equivariant 2 layer NN with random coefficients.
         """
 
 
@@ -140,21 +140,21 @@ class ConfigurationSpace:
             jax.random.uniform(
                 jax.random.PRNGKey(seed),
                 shape=(layer_1_count,len(invariant_functions)),
-                minval=-0.1,
-                maxval=0.1),
+                minval=-0.5,
+                maxval=0.5),
 
             jax.random.uniform(
                 jax.random.PRNGKey(seed),
                 shape=(layer_2_count,layer_1_count),
-                minval=-0.1,
-                maxval=0.1)]
+                minval=-0.5,
+                maxval=0.5)]
 
 
         def surface(point):
             inputs = jnp.array([f(point) for f in invariant_functions])
             layer_1 = jax.nn.sigmoid(coefficients[0].dot(inputs))
             layer_2 = jax.nn.sigmoid(coefficients[1].dot(layer_1))
-            return layer_2.mean()
+            return layer_2.sum()
 
 
         return jax.jit(surface)
@@ -164,18 +164,51 @@ class ConfigurationSpace:
 
 @partial(jax.jit, static_argnums=[0])
 def update_minima(function, point, factor):
-    return point - factor * jax.grad(function)(point)
+    """
+    returns the new point, and the val / grad norm at the passed in point.
+    """
 
-def find_minima(function, initial_point, num_steps, factor=0.001, log_frequency=1000):
+
+    val = function(point)
+    grad = jax.grad(function)(point)
+    grad_flattened = grad.flatten()
+    grad_norm = jax.numpy.sqrt(grad_flattened.dot(grad_flattened))
+
+    new_point = point - factor * grad
+
+
+    return new_point, val, grad_norm
+
+
+
+def find_minima(
+        function,
+        initial_point,
+        num_steps,
+        factor=0.01,
+        log_frequency=1000,
+        minimization_report_file="/tmp/minimzation_report.pdf"
+):
+
     point = initial_point
     function_vals = np.zeros(num_steps)
+    grad_norms = np.zeros(num_steps)
 
     for step in range(num_steps):
-        point = update_minima(function, point, factor)
-        val = function(point)
+        point, val, grad_norm = update_minima(function, point, factor)
         function_vals[step] = val
+        grad_norms[step] = grad_norm
+
         if step % log_frequency == 0:
             print("step:      ", step)
             print("function:  ", val)
+            print("grad norm: ", grad_norm)
 
-    return point, function_vals
+    fig, axs = plt.subplots(2, 1, figsize=(5,10), gridspec_kw={'height_ratios':[1,1]})
+    axs[0].plot(function_vals)
+    axs[0].set_title("function vals")
+    axs[1].plot(grad_norms)
+    axs[1].set_title("grad norms")
+    fig.savefig(minimization_report_file)
+
+    return point
