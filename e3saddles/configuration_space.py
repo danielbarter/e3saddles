@@ -128,32 +128,31 @@ class ConfigurationSpace:
         )
 
 
-    def random_surface(self, seed, number_of_factors):
-        """
-        return a randomly generated surface over the configuration space
-        take number_of_factors random linear combinations of E3 invariant
-        functions, stick them into sin, and then multiply the results. This
-        gives a super lumpy surface that doesn't blow up as you approach
-        infinity.
-        """
+    def random_surface(self, seed, layer_1_count, layer_2_count):
+
+
         invariant_functions = self.distance_functions + self.angle_functions
-        coefficients = jax.random.uniform(
-            jax.random.PRNGKey(seed),
-            shape=(number_of_factors,len(invariant_functions)),
-            minval=-0.1,
-            maxval=0.1
-        )
+
+        coefficients = [
+            jax.random.uniform(
+                jax.random.PRNGKey(seed),
+                shape=(layer_1_count,len(invariant_functions)),
+                minval=-0.1,
+                maxval=0.1),
+
+            jax.random.uniform(
+                jax.random.PRNGKey(seed),
+                shape=(layer_2_count,layer_1_count),
+                minval=-0.1,
+                maxval=0.1)]
+
 
         def surface(point):
-            result = 1
-            for i in range(number_of_factors):
-                accumulator = 0
-                for j in range(len(invariant_functions)):
-                    accumulator += coefficients[i,j] * invariant_functions[j](point)
+            inputs = jnp.array([f(point) for f in invariant_functions])
+            layer_1 = jax.nn.sigmoid(coefficients[0].dot(inputs))
+            layer_2 = jax.nn.sigmoid(coefficients[1].dot(layer_1))
+            return layer_2.mean()
 
-                result *= jnp.sin(accumulator)
-
-            return result
 
         return jax.jit(surface)
 
