@@ -250,8 +250,8 @@ def lagrangian(
 
     accumulator = action(function, start, points[0])
 
-    for i in range(0, points.shape[0] - 1):
-        accumulator += action(function, points[i], points[i+1])
+    accumulator += sum(jnp.array(
+        [action(function, points[i], points[i+1]) for i in range(0, points.shape[0] - 1)]))
 
     accumulator += action(function, points[-1], end)
 
