@@ -129,7 +129,7 @@ class ConfigurationSpace:
             maxval=1.0)
 
 
-    def random_surface(self, seed, layer_1_count, layer_2_count):
+    def random_surface(self, seed, layer_1_count, layer_2_count, scale):
         """
         E3 equivariant 2 layer NN with random coefficients.
         """
@@ -168,7 +168,7 @@ class ConfigurationSpace:
             inputs = jnp.array([f(point) for f in invariant_functions])
             layer_1 = jax.nn.sigmoid(coefficients[0].dot(inputs))
             layer_2 = jax.nn.sigmoid(coefficients[1].dot(layer_1))
-            return coefficients[2].dot(layer_2)
+            return scale * coefficients[2].dot(layer_2)
 
 
         return jax.jit(surface)
@@ -292,17 +292,22 @@ def find_geodesic(
             print("step:      ", step)
             print("lagrangian:", val)
 
+    function_vals = np.zeros(points.shape[0])
     grad_norms = np.zeros(points.shape[0])
     for i in range(points.shape[0]):
         grad = jax.grad(function)(points[i]).flatten()
         grad_norms[i] = jnp.sqrt(grad.dot(grad))
+        function_vals[i] = function(points[i])
 
-    fig, axs = plt.subplots(2, 1, figsize=(5,10), gridspec_kw={"height_ratios":[1,1]})
+    fig, axs = plt.subplots(3, 1, figsize=(5,15), gridspec_kw={"height_ratios":[1,1,1]})
     axs[0].plot(lagrangian_vals)
     axs[0].set_title("lagrangian vals")
 
     axs[1].plot(grad_norms)
     axs[1].set_title("geodesic grads")
+
+    axs[2].plot(function_vals)
+    axs[2].set_title("function vals above geodesic")
 
     fig.savefig(geodesic_report_file)
 
