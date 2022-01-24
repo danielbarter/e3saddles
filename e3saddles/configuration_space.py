@@ -265,6 +265,7 @@ def update_geodesic(function, points, start, end, factor):
     return new_points, val
 
 
+
 def compute_initial_points(start, end, number_of_points):
     ts = np.linspace(0.0, 1.0, number_of_points+1)[1:]
     points = [ start * ( 1 - t ) + end * t for t in ts ]
@@ -283,6 +284,7 @@ def find_geodesic(
     points = initial_points
     lagrangian_vals = np.zeros(num_steps)
 
+
     for step in range(num_steps):
         points, val = update_geodesic(function, points, start, end, factor)
         lagrangian_vals[step] = val
@@ -290,10 +292,19 @@ def find_geodesic(
             print("step:      ", step)
             print("lagrangian:", val)
 
+    grad_norms = np.zeros(points.shape[0])
+    for i in range(points.shape[0]):
+        grad = jax.grad(function)(points[i]).flatten()
+        grad_norms[i] = jnp.sqrt(grad.dot(grad))
+
     fig, axs = plt.subplots(2, 1, figsize=(5,10), gridspec_kw={"height_ratios":[1,1]})
     axs[0].plot(lagrangian_vals)
     axs[0].set_title("lagrangian vals")
-    fig.savefig(minimization_report_file)
+
+    axs[1].plot(grad_norms)
+    axs[1].set_title("geodesic grads")
+
+    fig.savefig(geodesic_report_file)
 
     return points
 
