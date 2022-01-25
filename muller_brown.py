@@ -35,6 +35,8 @@ def contour_2d(function, points=None, contour_file="/tmp/contour_file.pdf"):
     fig, ax = plt.subplots()
     ax.set_title("contor plot")
     ax.contour(x_vals, y_vals, z_vals, levels=np.arange(-200,400,5))
+    if points:
+        ax.scatter(result[:,0], result[:,1])
     fig.savefig(contour_file)
 
 
@@ -46,4 +48,4 @@ minima_3 = find_minima(muller_brown, jnp.array([0.5, 0.0]),  50000, 0.0001)
 initial_points = compute_initial_points(minima_1, minima_2, 100)
 
 
-# geodesic = find_geodesic(muller_brown, initial_points, minima_2, minima_2, 50000, 0.0001)
+geodesic = find_geodesic(muller_brown, initial_points, minima_2, minima_2, 50000, 0.000001)
