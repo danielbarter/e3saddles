@@ -49,3 +49,4 @@ initial_points = compute_initial_points(minima_1, minima_2, 100)
 
 
 geodesic = find_geodesic(muller_brown, initial_points, minima_2, minima_2, 50000, 0.000001)
+contour_2d(muller_brown, points=geodesic)
