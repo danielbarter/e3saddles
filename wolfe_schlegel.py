@@ -19,4 +19,4 @@ initial_points = jnp.vstack([initial_points_1, initial_points_2])
 
 
 geodesic = find_geodesic(wolfe_schlegel, initial_points, minima_1, minima_3, 20000, 0.00001, 100)
-contour_2d(wolfe_schlegel, -2.0, 2.0, -2.0 , 2.0, levels=np.arange(-100,100,5), points=geodesic)
+contour_2d(wolfe_schlegel, -2.0, 2.0, -2.0 , 2.0, levels=np.arange(-100,100,5), points=geodesic, title="wolfe schlegel")

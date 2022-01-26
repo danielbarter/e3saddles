@@ -337,13 +337,14 @@ def contour_2d(
         y_min,
         y_max,
         levels,
-        points=None,
+        points,
+        title,
         contour_file="/tmp/contour_file.pdf"):
 
     x_vals, y_vals, z_vals = contour_vals(function, x_min, x_max, y_min, y_max)
 
     fig, ax = plt.subplots()
-    ax.set_title("wolfe schlegel")
+    ax.set_title(title)
     ax.contour(x_vals, y_vals, z_vals, levels=levels)
     if points is not None:
         ax.scatter(points[:,0], points[:,1])
