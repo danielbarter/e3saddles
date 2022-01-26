@@ -34,7 +34,7 @@ def contour_2d(function, points=None, contour_file="/tmp/contour_file.pdf"):
 
     fig, ax = plt.subplots()
     ax.set_title("muller brown")
-    ax.contour(x_vals, y_vals, z_vals, levels=np.arange(-200,200,10))
+    ax.contour(x_vals, y_vals, z_vals, levels=np.arange(-200,100,10))
     if points is not None:
         ax.scatter(points[:,0], points[:,1])
     fig.savefig(contour_file)
