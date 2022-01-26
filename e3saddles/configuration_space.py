@@ -235,12 +235,12 @@ def find_minima(
 ### finding geodesics ###
 
 @partial(jax.jit, static_argnums=[0])
-def action(function, left_point, right_point, distance_factor=100.0):
+def action(function, left_point, right_point, distance_factor):
 
     displacement = right_point - left_point
     squares = displacement * displacement
     graph_component = (function(right_point) - function(left_point)) ** 2
-    return jnp.exp(distance_factor * squares.sum()) +  graph_component - 1
+    return jnp.exp(distance_factor * squares.sum()) - 1.0 +  graph_component
 
 
 @partial(jax.jit, static_argnums=[0])
@@ -248,23 +248,25 @@ def lagrangian(
         function,      # function defining graph
         points,        # n points
         start,         # start point. fixed
-        end            # end point. fixed
+        end,           # end point. fixed
+        distance_factor
 ):
 
-    accumulator = action(function, start, points[0])
+    accumulator = action(function, start, points[0], distance_factor)
 
     accumulator += sum(jnp.array(
-        [action(function, points[i], points[i+1]) for i in range(0, points.shape[0] - 1)]))
+        [action(function, points[i], points[i+1], distance_factor)
+         for i in range(0, points.shape[0] - 1)]))
 
-    accumulator += action(function, points[-1], end)
+    accumulator += action(function, points[-1], end, distance_factor)
 
     return accumulator
 
 
 @partial(jax.jit, static_argnums=[0])
-def update_geodesic(function, points, start, end, factor):
-    val = lagrangian(function, points, start, end)
-    new_points = points -  factor * jax.grad(lagrangian, argnums=1)(function, points, start, end)
+def update_geodesic(function, points, start, end, factor, distance_factor):
+    val = lagrangian(function, points, start, end, distance_factor)
+    new_points = points -  factor * jax.grad(lagrangian, argnums=1)(function, points, start, end, distance_factor)
     return new_points, val
 
 
@@ -281,6 +283,7 @@ def find_geodesic(
         end,
         num_steps,
         factor,
+        distance_factor,
         log_frequency=1000,
         geodesic_report_file="/tmp/geodesic_report.pdf"
 ):
@@ -289,7 +292,7 @@ def find_geodesic(
 
 
     for step in range(num_steps):
-        points, val = update_geodesic(function, points, start, end, factor)
+        points, val = update_geodesic(function, points, start, end, factor, distance_factor)
         lagrangian_vals[step] = val
         if step % 1000 == 0:
             print("step:      ", step)
@@ -317,4 +320,32 @@ def find_geodesic(
     return points
 
 
+
+
+@partial(jax.jit, static_argnums=[0,1,2,3,4])
+def contour_vals(function,x_min, x_max, y_min, y_max):
+    x_vals = jnp.arange(x_min, x_max, 0.01)
+    y_vals = jnp.arange(y_min, y_max, 0.01)
+    l,r = jnp.meshgrid(x_vals, y_vals)
+    args = jnp.stack([l,r],axis=2)
+    return x_vals, y_vals, jnp.apply_along_axis(function, 2, args)
+
+def contour_2d(
+        function,
+        x_min,
+        x_max,
+        y_min,
+        y_max,
+        levels,
+        points=None,
+        contour_file="/tmp/contour_file.pdf"):
+
+    x_vals, y_vals, z_vals = contour_vals(function, x_min, x_max, y_min, y_max)
+
+    fig, ax = plt.subplots()
+    ax.set_title("wolfe schlegel")
+    ax.contour(x_vals, y_vals, z_vals, levels=levels)
+    if points is not None:
+        ax.scatter(points[:,0], points[:,1])
+    fig.savefig(contour_file)
 
