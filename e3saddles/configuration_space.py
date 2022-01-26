@@ -235,12 +235,12 @@ def find_minima(
 ### finding geodesics ###
 
 @partial(jax.jit, static_argnums=[0])
-def action(function, left_point, right_point):
+def action(function, left_point, right_point, distance_factor=100.0):
 
     displacement = right_point - left_point
     squares = displacement * displacement
     graph_component = (function(right_point) - function(left_point)) ** 2
-    return squares.sum() + graph_component
+    return jnp.exp(distance_factor * squares.sum()) +  graph_component - 1
 
 
 @partial(jax.jit, static_argnums=[0])

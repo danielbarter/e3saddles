@@ -18,7 +18,7 @@ def muller_brown(point):
         total += ai[i] * jnp.exp(bi[i] * (x - xi[i]) * (x - xi[i]) + ci[i] * (x - xi[i]) * (y - yi[i]) + di[i] * (y - yi[i]) * (y - yi[i]))
 
 
-    return total
+    return  total
 
 
 @partial(jax.jit, static_argnums=[0])
@@ -33,10 +33,10 @@ def contour_2d(function, points=None, contour_file="/tmp/contour_file.pdf"):
     x_vals, y_vals, z_vals = contour_vals(function)
 
     fig, ax = plt.subplots()
-    ax.set_title("contor plot")
-    ax.contour(x_vals, y_vals, z_vals, levels=np.arange(-200,400,5))
-    if points:
-        ax.scatter(result[:,0], result[:,1])
+    ax.set_title("muller brown")
+    ax.contour(x_vals, y_vals, z_vals, levels=np.arange(-200,200,10))
+    if points is not None:
+        ax.scatter(points[:,0], points[:,1])
     fig.savefig(contour_file)
 
 
@@ -45,8 +45,7 @@ minima_1 = find_minima(muller_brown, jnp.array([-0.7, 1.5]), 50000, 0.0001)
 minima_2 = find_minima(muller_brown, jnp.array([0.0, 0.5]),  50000, 0.0001)
 minima_3 = find_minima(muller_brown, jnp.array([0.5, 0.0]),  50000, 0.0001)
 
-initial_points = compute_initial_points(minima_1, minima_2, 100)
+initial_points = compute_initial_points(minima_1, minima_2, 30)
 
-
-geodesic = find_geodesic(muller_brown, initial_points, minima_2, minima_2, 50000, 0.000001)
+geodesic=find_geodesic(muller_brown, initial_points, minima_1, minima_2, 50000, 0.000001)
 contour_2d(muller_brown, points=geodesic)
