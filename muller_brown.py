@@ -27,5 +27,5 @@ minima_3 = find_minima(muller_brown, jnp.array([0.5, 0.0]),  50000, 0.0001)
 
 initial_points = compute_initial_points(minima_1, minima_2, 30)
 
-geodesic=find_geodesic(muller_brown, initial_points, minima_1, minima_2, 20000, 0.000001, 100)
-contour_2d(muller_brown, -1.7, 1.3, -0.5 , 2.2, levels=np.arange(-200,200,10), points=geodesic, title="muller brown")
+paths=find_geodesic(muller_brown, initial_points, minima_1, minima_2, 20000, 0.000001, 100)
+contour_2d(muller_brown, -1.7, 1.3, -0.5 , 2.2, levels=np.arange(-200,200,10), paths=paths, title="muller brown")

@@ -2,6 +2,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from functools import partial
 
 
@@ -287,7 +288,9 @@ def find_geodesic(
         log_frequency=1000,
         geodesic_report_file="/tmp/geodesic_report.pdf"
 ):
+    result = []
     points = initial_points
+    result.append(points)
     lagrangian_vals = np.zeros(num_steps)
 
 
@@ -295,9 +298,12 @@ def find_geodesic(
         points, val = update_geodesic(function, points, start, end, factor, distance_factor)
         lagrangian_vals[step] = val
         if step % 1000 == 0:
+            result.append(points)
             print("step:      ", step)
             print("lagrangian:", val)
 
+
+    result.append(points)
     function_vals = np.zeros(points.shape[0])
     grad_norms = np.zeros(points.shape[0])
     for i in range(points.shape[0]):
@@ -317,7 +323,7 @@ def find_geodesic(
 
     fig.savefig(geodesic_report_file)
 
-    return points
+    return result
 
 
 
@@ -337,16 +343,22 @@ def contour_2d(
         y_min,
         y_max,
         levels,
-        points,
+        paths,
         title,
-        contour_file="/tmp/contour_file.pdf"):
+        contour_file="/tmp/contour_file.gif"):
 
     x_vals, y_vals, z_vals = contour_vals(function, x_min, x_max, y_min, y_max)
 
+    ims = []
     fig, ax = plt.subplots()
     ax.set_title(title)
     ax.contour(x_vals, y_vals, z_vals, levels=levels)
-    if points is not None:
-        ax.scatter(points[:,0], points[:,1])
-    fig.savefig(contour_file)
+
+    for path in paths:
+
+        scatter = ax.scatter(path[:,0], path[:,1],color=['red'])
+        ims.append([scatter])
+
+    ani = animation.ArtistAnimation(fig, ims)
+    ani.save(contour_file)
 
